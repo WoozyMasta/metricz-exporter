@@ -14,8 +14,8 @@ Group=metricz-exporter
 WorkingDirectory=/var/lib/metricz-exporter
 StateDirectory=metricz-exporter
 
-ExecStart=/usr/local/bin/metricz-exporter
-EnvironmentFile=-/etc/default/metricz-exporter --config /etc/metricz-exporter.yaml
+ExecStart=/usr/local/bin/metricz-exporter --config /etc/metricz-exporter.yaml
+EnvironmentFile=-/etc/default/metricz-exporter
 
 Restart=on-failure
 RestartSec=2s
