@@ -1,0 +1,210 @@
+# metricz-exporter configuration file example (YAML)
+#
+# Notes:
+# - Durations use Go time.Duration. Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
+# - Secrets (passwords) should not be committed. Use secret injection
+#
+# Security model:
+# - Private endpoints: /api/v1/ingest/*, /api/v1/commit/*, and /metrics are protected by BasicAuth
+#   ONLY when BOTH exporter.auth.user and exporter.auth.password are non-empty
+#   If either is empty -> auth is DISABLED and these endpoints become unauthenticated
+# - Public endpoints: /api/v1/status* and /health* are always unauthenticated in-app
+#
+# /api/v1/status export caveats:
+# - values/labels export uses ONLY the first sample of each metric family (Metric[0])
+#   Multi-series metrics (same name, different labels) are truncated
+#
+# Configuration supports inline Environment Variables:
+# - ${VAR}            Replaces with the value of `VAR`
+# - ${VAR:-default}   Uses `default` if `VAR` is unset or empty
+# - ${VAR:?error}     Fails to start with an error message if `VAR` is unset
+# - $${VAR}           Escaping. Evaluates to the literal string ${VAR} without expansion
+
+---
+# Base exporter configuration
+exporter:
+  # Address to listen on (bind address)
+  # - Use "127.0.0.1:8098" if you put a reverse proxy in front
+  # - Use ":8098" / "0.0.0.0:8098" only with firewall/reverse-proxy and enabled auth
+  listen_addr: ${METRICZ_LISTEN_ADDRESS:-:8098} # (8098 by default)
+
+  # Basic Auth for private endpoints:
+  # - POST /api/v1/ingest/{instance_id}
+  # - POST /api/v1/ingest/{instance_id}/{txn_hash}/{seq_id}
+  # - POST /api/v1/commit/{instance_id}/{txn_hash}
+  # - GET  /metrics
+  #
+  # Enable rule:
+  # - Auth ENABLED only when BOTH user != "" AND password != ""
+  # - If either is empty -> auth is DISABLED for ALL endpoints above
+  auth:
+    # Username (non-empty required to enable auth)
+    user: ${METRICZ_AUTH_USER:-metricz} # (metricz by default)
+
+    # Password (secret; non-empty required to enable auth)
+    # Leave empty ONLY if you intentionally want unauthenticated ingest/commit/metrics
+    password: ${METRICZ_AUTH_PASSWORD:-}
+
+  # Public /status endpoints return selected metrics values/labels in JSON format
+  # - /api/v1/status
+  # - /api/v1/status/{instance_id}
+  #
+  # Behavior:
+  # - Responses are cached in-memory per key ("all" or {instance_id}) for cache_ttl
+  # - Header X-Cache: HIT/MISS
+  # - "cors: true" adds Access-Control-Allow-Origin: * ONLY for /status endpoints
+  public:
+    # Enable /status endpoints
+    enabled: ${METRICZ_PUBLIC_ENABLED:-false} # (false by default)
+
+    # Cache TTL for public JSON endpoints (in-memory)
+    cache_ttl: ${METRICZ_PUBLIC_CACHE_TTL:-15s} # (15s by default)
+
+    # Enable CORS for public JSON endpoints by setting Allow-Origin: *
+    cors: ${METRICZ_PUBLIC_CORS:-false} # (false by default)
+
+  # /api/v1/ingest and /api/v1/commit settings for receiving metrics from clients
+  ingest:
+    # TTL for incomplete chunked uploads (transaction-based ingest)
+    #
+    # Effective staging TTL is dynamic:
+    # - ttl = max(transaction_ttl, known scrape_interval_seconds for this instance at txn start)
+    #   scrape_interval_seconds is learned from the last successful ingest
+    #   (metric: dayz_metricz_scrape_interval_seconds), default is 60s if unknown
+    #
+    # Also:
+    # - Starting a new txn for the same instance_id drops any previous unfinished txn of that instance
+    transaction_ttl: ${METRICZ_INGEST_TRANSACTION_TTL:-15s} # (15s by default)
+
+    # How often to run garbage collection for expired transactions
+    # Note: cleanup happens on GC ticks after ExpiresAt is reached
+    gc_ttl: ${METRICZ_INGEST_GC_TTL:-60s} # (60s by default)
+
+    # Max HTTP body size in bytes (applies per request):
+    # - single-shot ingest: whole request body
+    # - chunked ingest: EACH chunk request body
+    max_body_size: ${METRICZ_INGEST_MAX_BODY_SIZE:-4194304} # (4194304 by default)
+
+    # If true, allow payload to override/replace instance_id label when it differs from URL
+    # Enabling this allows cross-instance contamination unless you enforce external ACL
+    overwrite_instance_id: ${METRICZ_INGEST_OVERWRITE_INSTANCE_ID:-false} # (false by default)
+
+  # Ingest staleness detection (applies to ingested(push) metrics only)
+  # Source interval:
+  # - Uses dayz_metricz_scrape_interval_seconds from last ingest payload (default 60s if missing)
+  #
+  # Threshold:
+  # - threshold = max(scrape_interval_seconds * multiplier, min_age)
+  #
+  # When stale:
+  # - ingested metric families are suppressed (not exported),
+  # - if cached dayz_metricz_status exists, it is exported with value forced to 0
+  stale:
+    multiplier: ${METRICZ_STALE_MULTIPLIER:-2.0} # (2.0 by default)
+    min_age: ${METRICZ_STALE_MIN_AGE:-30s} # (30s by default)
+
+  geo_ip:
+    # Path to GeoLite2/GeoIP2 mmdb database
+    # Empty => GeoIP enrichment disabled
+    path: ${METRICZ_GEOIP_PATH:-metricz-city.mmdb} # (metricz-city.mmdb by default)
+
+    # URL for download MaxMind MMDB GeoDB
+    # Empty => GeoIP downloading/updating disabled
+    url: ${METRICZ_GEOIP_URL:-https://git.io/GeoLite2-City.mmdb} # (https://git.io/GeoLite2-City.mmdb by default)
+
+    # Download new file on exporter start if file age greater than this age
+    # 0 => disable updates
+    max_age: ${METRICZ_GEOIP_MAX_AGE:-24h} # (24h by default)
+
+  log:
+    # Logging level: trace, debug, info, warn, error, fatal
+    level: ${METRICZ_LOG_LEVEL:-info} # (info by default)
+
+    # Format: text or json
+    # - text format may use ANSI colors when supported (NO_COLOR disables, FORCE_COLOR=true enables)
+    format: ${METRICZ_LOG_FORMAT:-text} # (text by default)
+
+    # Output: stdout, stderr, or a file path
+    # If file path: opened with 0644 and append mode; directory must exist
+    output: ${METRICZ_LOG_OUTPUT:-stderr} # (stderr by default)
+
+# Server instances for active polling/enrichment (optional)
+# /ingest accepts any instance_id by default even if not listed here
+#
+# However, if instance_id is explicitly specified here, it allows you to enrich the metrics with data:
+# - From A2S, such as player queue, server name, and monitoring server availability in active mode
+#   Expose `metricz_a2s_*` metrics
+# - From BERcon, with a list of players with their IP addresses and geolocations,
+#   and the `dayz_metricz_player_loaded` metric from MetricZ will be enriched with the BattlEye GUID
+#   Expose `metricz_rcon_*` metrics
+servers:
+  # One entry per logical instance_id
+  # instance_id must be unique across the list and match instance_id label from MetricZ
+  - instance_id: "1"
+    # Steam A2S_INFO query
+    a2s:
+      # A2S endpoint host:port
+      address: 127.0.0.1:27016
+
+      # How often to poll A2S (should be >= deadline_timeout)
+      poll_interval: 15s # (by default)
+
+      # Per-request deadline (avoid hanging reads)
+      deadline_timeout: 5s # (by default)
+
+      # Network buffer size for reads (too small => truncation)
+      buffer_size: 1400 # (by default)
+
+    # BattleEye RCon query
+    rcon:
+      # RCon endpoint host:port
+      address: 127.0.0.1:2025
+
+      # RCon password (secret)
+      password: ${METRICZ_RCON_PASSWORD:?Need setup RCon connection or not use it!}
+
+      # How often to poll metrics via RCon
+      poll_interval: 15s # (by default)
+
+      # Keepalive timeout for idle connections (not more than 45s)
+      keepalive_timeout: 30s # (by default)
+
+      # Per-operation deadline
+      deadline_timeout: 5s # (by default)
+
+      # Buffer size for RCon packets
+      buffer_size: 1024 # (by default)
+
+  - instance_id: "${METRICZ_SERVER_2_INSTANCE_ID:-2}"
+    a2s:
+      address: ${METRICZ_SERVER_2_A2S_ADDRESS:-127.0.0.1:27017}
+
+    rcon:
+      address: ${METRICZ_SERVER_2_RCON_ADDRESS:-127.0.0.1:2125}
+      password: ${METRICZ_SERVER_2_RCON_PASSWORD:-}
+
+# public_export config controls what /api/v1/status and /api/v1/status/{instance_id} returns
+#
+# IMPORTANT limitations:
+# - For each metric name, /status exports ONLY MetricFamily.Metric[0] (first sample)
+# - Supported value types: Gauge/Counter. Summary/Histogram are ignored
+# - If a metric has multiple series (different labels), only one series is exported here
+public_export:
+  # Metric values allowlist (name -> numeric value)
+  # [dayz_metricz_status, metricz_a2s_info] (by default)
+  values:
+    - dayz_metricz_status
+    - dayz_metricz_fps_window_avg
+    - dayz_metricz_time_of_day
+    - metricz_a2s_info
+    - metricz_a2s_info_players_online
+    - metricz_a2s_info_players_queue
+    - metricz_a2s_info_players_slots
+  # Metric labels allowlist (name -> {label_k: label_v})
+  labels: # (by default)
+    - dayz_metricz_status
+    - metricz_a2s_info
+
+  # Denylist of label keys removed from output
+  # For security exclude identifiers and personal data
+  labels_exclude: [steam_id, guid, buid, name, ip, city, country] # (by default)
