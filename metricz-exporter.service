@@ -7,8 +7,8 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=metricz-exporter
-Group=metricz-exporter
+User=metricz
+Group=metricz
 
 # Default working directory for mmdb
 WorkingDirectory=/var/lib/metricz-exporter
