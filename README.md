@@ -63,6 +63,9 @@ You can generate a default configuration file by running:
 ./metricz-exporter --init-config
 ```
 
+<!-- markdownlint-disable-next-line MD033 -->
+<details><summary>Click to expand default configuration</summary>
+
 ### Configuration File
 
 <!-- include:start -->
@@ -280,6 +283,9 @@ public_export:
 ```
 <!-- include:end -->
 
+<!-- markdownlint-disable-next-line MD033 -->
+</details>
+
 ## Endpoints
 
 ### Public
@@ -344,6 +350,28 @@ sudo editor /etc/metricz-exporter.yaml
 sudo systemctl start metricz-exporter.service
 sudo systemctl status metricz-exporter.service
 sudo systemctl enable metricz-exporter.service
+```
+
+## Install as Windows Service
+
+The application supports native Windows Service execution.
+You can register it using the built-in `sc.exe` tool.
+Run `cmd.exe` or PowerShell as **Administrator**:
+
+```bat
+:: Create the service (note the space after binPath=)
+:: Ensure you provide absolute paths to both the executable and the config file.
+sc create "MetricZExporter" binPath= "C:\MetricZ\metricz-exporter.exe --config C:\MetricZ\config.yaml" start= auto DisplayName= "MetricZ Exporter"
+
+:: Start the service
+sc start "MetricZExporter"
+
+:: Query status
+sc query "MetricZExporter"
+
+:: To remove the service later:
+:: sc stop "MetricZExporter"
+:: sc delete "MetricZExporter"
 ```
 
 ## 👉 [Support Me](https://gist.github.com/WoozyMasta/7b0cabb538236b7307002c1fbc2d94ea)
