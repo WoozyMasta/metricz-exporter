@@ -367,6 +367,63 @@ sc query "MetricZExporter"
 :: sc delete "MetricZExporter"
 ```
 
+## Prometheus Configuration
+
+Add the following job to your `prometheus.yml`:
+
+```yaml
+- job_name: metricz-exporter
+  scrape_interval: 5s
+  static_configs:
+    - targets:
+        - 127.0.0.1:8098
+```
+
+### With Basic Auth
+
+If you have enabled Basic Authentication,
+provide the credentials using `basic_auth`:
+
+```yaml
+- job_name: metricz-exporter
+  scrape_interval: 5s
+  static_configs:
+    - targets:
+        - 127.0.0.1:8098
+  basic_auth:
+    username: metricz
+    password: $tr0ng
+```
+
+### Migration (preserve existing time series)
+
+Time series identity is defined by the metric name and its full label set.
+If you previously used the node-exporter or windows-exporter textfile
+collector and want to avoid creating new series,
+keep the same `job` label and the same `instance` label.
+
+> [!NOTE]  
+> `job_name` must remain unique (this is required by vmagent).
+
+Example: scrape metricz-exporter, but preserve
+`job="node-exporter"` and `instance="127.0.0.1:9100"`:
+
+```yaml
+- job_name: metricz-exporter
+  scrape_interval: 5s
+  static_configs:
+    - targets:
+        - 127.0.0.1:8098
+  relabel_configs:
+    - target_label: job
+      replacement: node-exporter
+    - target_label: instance
+      replacement: 127.0.0.1:9100
+```
+
+Replace `node-exporter` and `127.0.0.1:9100`
+with the exact instance value you had before.
+
 ## 👉 [Support Me](https://gist.github.com/WoozyMasta/7b0cabb538236b7307002c1fbc2d94ea)
 
 <!-- links -->
