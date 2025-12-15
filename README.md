@@ -313,10 +313,6 @@ sudo chmod +x /usr/local/bin/metricz-exporter
 # check it works
 metricz-exporter --version
 
-# generate default config
-sudo metricz-exporter --print-config > /etc/metricz-exporter.yaml
-sudo chmod 0600 /etc/metricz-exporter.yaml
-
 # install systemd service
 sudo curl -sSfLo /etc/systemd/system/metricz-exporter.service \
   https://raw.githubusercontent.com/WoozyMasta/metricz-exporter/master/metricz-exporter.service
@@ -334,6 +330,11 @@ sudo useradd --system \
 mkdir -p /var/lib/metricz-exporter
 sudo chown -R metricz:metricz /var/lib/metricz-exporter
 sudo chmod 0600 /var/lib/metricz-exporter
+
+# generate default config
+sudo metricz-exporter --print-config > /etc/metricz-exporter.yaml
+sudo chown metricz:metricz /etc/metricz-exporter.yaml
+sudo chmod 0600 /etc/metricz-exporter.yaml
 
 # edit settings
 sudo editor /etc/metricz-exporter.yaml
