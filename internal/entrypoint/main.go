@@ -55,8 +55,15 @@ func Execute() int {
 	defer cancel()
 	pollerMgr.Start(ctx)
 
-	// Register the exporter with Prometheus
-	reg := prometheus.NewRegistry()
+	// Registry (implements both Registerer and Gatherer)
+	registry := prometheus.NewRegistry()
+	var reg prometheus.Registerer = registry
+
+	// Wrapper adds extra labels on all collected metrics
+	if len(cfg.App.Prometheus.ExtraLabels) != 0 {
+		reg = prometheus.WrapRegistererWith(prometheus.Labels(cfg.App.Prometheus.ExtraLabels), registry)
+	}
+
 	reg.MustRegister(collectors.NewGoCollector())
 	reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	reg.MustRegister(exporter)
@@ -110,7 +117,7 @@ func Execute() int {
 
 	// Prometheus Endpoint
 	r.With(apiHandler.BasicAuthMiddleware).
-		Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+		Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
 	log.Info().
 		Str("address", cfg.App.ListenAddr).

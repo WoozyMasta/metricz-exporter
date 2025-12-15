@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## Unreleased
+
+### Added
+
+* option for add extra labels for all exported metrics
+
 ## [0.1.0][] - 2025-12-15
 
 ### Added

@@ -167,6 +167,7 @@ exporter:
     multiplier: ${METRICZ_STALE_MULTIPLIER:-2.0} # (2.0 by default)
     min_age: ${METRICZ_STALE_MIN_AGE:-30s} # (30s by default)
 
+  # GeoIP settings
   geo_ip:
     # Path to GeoLite2/GeoIP2 mmdb database
     # Empty => GeoIP enrichment disabled
@@ -179,6 +180,14 @@ exporter:
     # Download new file on exporter start if file age greater than this age
     # 0 => disable updates
     max_age: ${METRICZ_GEOIP_MAX_AGE:-24h} # (24h by default)
+
+  # Prometheus extra settings
+  prometheus:
+    # ConstantLabels are added to every metric exposed by this exporter.
+    # WARNING: changing labels creates new time series.
+    extra_labels: {}
+      # exporter: metricz
+      # datacenter: eu-2
 
   log:
     # Logging level: trace, debug, info, warn, error, fatal
@@ -208,6 +217,7 @@ servers:
     # Steam A2S_INFO query
     a2s:
       # A2S endpoint host:port
+      # It's best to indicate the public IP address here
       address: 127.0.0.1:27016
 
       # How often to poll A2S (should be >= deadline_timeout)

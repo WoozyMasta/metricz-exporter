@@ -3,8 +3,10 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/creasty/defaults"
+	"github.com/prometheus/common/model"
 	"github.com/woozymasta/jamle"
 	"github.com/woozymasta/metricz-exporter/internal/logger"
 )
@@ -43,6 +45,9 @@ type AppConfig struct {
 
 	// Stale config defines when a server/metrics are considered stale/down.
 	Stale StaleConfig `json:"stale"`
+
+	// Prometheus congiguration
+	Prometheus PrometheusConfig `json:"prometheus"`
 }
 
 // AuthConfig controls Basic Auth for private endpoints.
@@ -104,6 +109,13 @@ type GeoIPConfig struct {
 
 	// MaxAge is a max age of file.
 	MaxAge Duration `json:"max_age" default:"24h"`
+}
+
+// PrometheusConfig extra prometheus settings.
+type PrometheusConfig struct {
+	// ConstantLabels are added to every metric exposed by this exporter.
+	// WARNING: changing labels creates new time series.
+	ExtraLabels map[string]string `json:"extra_labels"`
 }
 
 // PublicExportConfig configures /status output.
@@ -231,6 +243,38 @@ func (cfg *Config) validate() error {
 			if srv.RCon.Password == "" {
 				return fmt.Errorf("instance '%s': rcon enabled but password is empty", srv.InstanceID)
 			}
+		}
+	}
+
+	if err := validateExtraLabels(cfg.App.Prometheus.ExtraLabels); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateExtraLabels
+func validateExtraLabels(m map[string]string) error {
+	if len(m) == 0 {
+		return nil
+	}
+
+	deny := map[string]struct{}{
+		"job": {}, "instance": {}, "le": {}, "quantile": {},
+	}
+
+	for k, v := range m {
+		if k == "" || v == "" {
+			return fmt.Errorf("prometheus.extra_labels: empty key/value")
+		}
+		if _, ok := deny[k]; ok {
+			return fmt.Errorf("prometheus.extra_labels: reserved label %q", k)
+		}
+		if strings.HasPrefix(k, "__") {
+			return fmt.Errorf("prometheus.extra_labels: reserved label prefix %q", k)
+		}
+		if !model.ValidationScheme.IsValidLabelName(model.UTF8Validation, k) {
+			return fmt.Errorf("prometheus.extra_labels: invalid label name %q", k)
 		}
 	}
 
