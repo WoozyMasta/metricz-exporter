@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
-## Unreleased
+## [0.1.1][] - 2025-12-16
 
 ### Added
 
@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning][].
 * option `disable_go_collector` for disable Go runtime metrics
 * option `disable_process_collector` for disable process state metrics
 * metrics documentation file `METRICS.md`
+
+[0.1.1]: https://github.com/WoozyMasta/metricz-exporter/compare/v0.1.0...v0.1.1
 
 ## [0.1.0][] - 2025-12-15
 
