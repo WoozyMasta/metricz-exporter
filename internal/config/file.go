@@ -25,6 +25,9 @@ type Config struct {
 
 // AppConfig groups top-level exporter behavior.
 type AppConfig struct {
+	// Prometheus congiguration
+	Prometheus PrometheusConfig `json:"prometheus"`
+
 	// Logger config is applied after load+validate.
 	Logger logger.Logger `json:"log"`
 
@@ -45,9 +48,6 @@ type AppConfig struct {
 
 	// Stale config defines when a server/metrics are considered stale/down.
 	Stale StaleConfig `json:"stale"`
-
-	// Prometheus congiguration
-	Prometheus PrometheusConfig `json:"prometheus"`
 }
 
 // AuthConfig controls Basic Auth for private endpoints.
@@ -113,16 +113,16 @@ type GeoIPConfig struct {
 
 // PrometheusConfig extra prometheus settings.
 type PrometheusConfig struct {
+	// ConstantLabels are added to every metric exposed by this exporter.
+	// WARNING: changing labels creates new time series.
+	ExtraLabels map[string]string `json:"extra_labels"`
+
 	// Disable the collector that exports metrics about the current Go process and runtime
 	DisableGoCollector bool `json:"disable_go_collector"`
 
 	// Disables the collector that exports metrics about the current state of the process, including
 	// CPU, memory, and file descriptor usage, as well as the process startup time.
 	DisableProcessCollector bool `json:"disable_process_collector"`
-
-	// ConstantLabels are added to every metric exposed by this exporter.
-	// WARNING: changing labels creates new time series.
-	ExtraLabels map[string]string `json:"extra_labels"`
 }
 
 // PublicExportConfig configures /status output.
