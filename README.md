@@ -39,16 +39,8 @@ Container images are available at:
 * `docker.io/woozymasta/metricz-exporter:latest`
 
 ```bash
-# get config
-docker run --rm -ti ghcr.io/woozymasta/metricz-exporter:latest --print-config
-# run with auto create config
 mkdir -p metricz
 docker run -d --name metricz-exporter \
-  -p 8098:8098 \
-  -v "$PWD/metricz:/metricz" \
-  ghcr.io/woozymasta/metricz-exporter:latest
-
-  docker run --rm -ti \
   -p 8098:8098 \
   -v "$PWD/metricz:/metricz" \
   ghcr.io/woozymasta/metricz-exporter:latest
