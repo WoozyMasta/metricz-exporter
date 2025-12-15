@@ -153,6 +153,7 @@ sbom-app:
 		-output "$(BIN_DIR)/$(BIN_NAME).sbom.json" -main $(WORK_DIR)
 
 winres:
+	@chmod +x ./winres/winres.sh
 	./winres/winres.sh "$(BIN_NAME)" "$(WINRES_BASE)" "$(WINRES_UPDATED)"
 
 tools: tool-golangci-lint tool-betteralign tool-cyclonedx tools-winres
