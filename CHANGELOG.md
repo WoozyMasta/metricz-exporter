@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning][].
 
 ### Added
 
+* public status metrics with multiple series are now aggregated
+  * values are exported as sum of all Gauge/Counter samples
+  * labels are exported as unique value lists across all samples
+  * single-sample-only limitation removed
 * option `extra_labels` for add extra labels for all exported metrics
 * option `disable_go_collector` for disable Go runtime metrics
 * option `disable_process_collector` for disable process state metrics

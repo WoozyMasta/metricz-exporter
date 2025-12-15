@@ -269,12 +269,15 @@ servers:
 
 # public_export config controls what /api/v1/status and /api/v1/status/{instance_id} returns
 #
-# IMPORTANT limitations:
-# - For each metric name, /status exports ONLY MetricFamily.Metric[0] (first sample)
-# - Supported value types: Gauge/Counter. Summary/Histogram are ignored
-# - If a metric has multiple series (different labels), only one series is exported here
+# Behavior:
+# - For each metric name, /status aggregates ALL samples in instance_id metrics family.
+# - Exported numeric value is SUM of all Gauge/Counter samples in the family.
+# - Summary/Histogram/Untyped are ignored.
+# - Labels are exported as "label_key -> [values...]" collected from ALL samples in the family.
+#   Values are deduplicated and sorted for stable output.
+# - LabelsExclude is applied to labels before exporting.
 public_export:
-  # Metric values allowlist (name -> numeric value)
+  # Metric values allowlist (name -> numeric sum of all samples)
   # [dayz_metricz_status, metricz_a2s_info] (by default)
   values:
     - dayz_metricz_status
@@ -284,7 +287,7 @@ public_export:
     - metricz_a2s_info_players_online
     - metricz_a2s_info_players_queue
     - metricz_a2s_info_players_slots
-  # Metric labels allowlist (name -> {label_k: label_v})
+  # Metric labels allowlist (name -> {label_key: [values...]})
   labels: # (by default)
     - dayz_metricz_status
     - metricz_a2s_info

@@ -13,8 +13,8 @@ import (
 )
 
 type publicStatusData struct {
-	Values map[string]float64           `json:"values"`
-	Labels map[string]map[string]string `json:"labels"`
+	Values map[string]float64             `json:"values"`
+	Labels map[string]map[string][]string `json:"labels"`
 }
 
 // HandleStatusSingle returns public status for a single instance.
@@ -90,46 +90,80 @@ func (h *Handler) serveStatusRequest(w http.ResponseWriter, cacheKey string, isA
 	_, _ = w.Write(body)
 }
 
-// Helper: Transforms internal state to clean JSON structure based on config allow-list
+// collectPublicData helper transforms internal state to clean JSON structure based on config allow-list
 func collectPublicData(state *storage.InstanceState, cfg config.PublicExportConfig) *publicStatusData {
 	out := &publicStatusData{
 		Values: make(map[string]float64),
-		Labels: make(map[string]map[string]string),
+		Labels: make(map[string]map[string][]string),
 	}
 
 	// Maps for fast lookup
-	wantValues := make(map[string]bool)
+	wantValues := make(map[string]bool, len(cfg.Values))
 	for _, v := range cfg.Values {
 		wantValues[v] = true
 	}
 
-	wantLabels := make(map[string]bool)
+	wantLabels := make(map[string]bool, len(cfg.Labels))
 	for _, l := range cfg.Labels {
 		wantLabels[l] = true
 	}
 
 	processFamilies := func(families map[string]*dto.MetricFamily) {
 		for name, mf := range families {
-			// Values
-			if wantValues[name] && len(mf.Metric) > 0 {
-				m := mf.Metric[0]
-				var val float64
-				if m.Gauge != nil {
-					val = m.Gauge.GetValue()
-				} else if m.Counter != nil {
-					val = m.Counter.GetValue()
-				}
-				out.Values[name] = val
+			if mf == nil || len(mf.Metric) == 0 {
+				continue
 			}
-			// Labels
-			if wantLabels[name] && len(mf.Metric) > 0 {
-				m := mf.Metric[0]
-				kv := make(map[string]string)
-				for _, lp := range m.Label {
-					if !slices.Contains(cfg.LabelsExclude, lp.GetName()) {
-						kv[lp.GetName()] = lp.GetValue()
+
+			// Values: sum across all samples in the family
+			if wantValues[name] {
+				var sum float64
+				for _, m := range mf.Metric {
+					if m == nil {
+						continue
+					}
+					if m.Gauge != nil {
+						sum += m.Gauge.GetValue()
+					} else if m.Counter != nil {
+						sum += m.Counter.GetValue()
 					}
 				}
+				out.Values[name] = sum
+			}
+
+			// Labels: collect unique values per label key across all samples
+			if wantLabels[name] {
+				// labelKey -> set(value)
+				sets := make(map[string]map[string]struct{})
+				for _, m := range mf.Metric {
+					if m == nil {
+						continue
+					}
+					for _, lp := range m.Label {
+						if lp == nil {
+							continue
+						}
+						k := lp.GetName()
+						if k == "" || slices.Contains(cfg.LabelsExclude, k) {
+							continue
+						}
+						v := lp.GetValue()
+						if _, ok := sets[k]; !ok {
+							sets[k] = make(map[string]struct{})
+						}
+						sets[k][v] = struct{}{}
+					}
+				}
+
+				kv := make(map[string][]string, len(sets))
+				for k, set := range sets {
+					vals := make([]string, 0, len(set))
+					for v := range set {
+						vals = append(vals, v)
+					}
+					slices.Sort(vals)
+					kv[k] = vals
+				}
+
 				out.Labels[name] = kv
 			}
 		}
