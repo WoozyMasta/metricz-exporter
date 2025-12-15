@@ -17,7 +17,10 @@ and this project adheres to [Semantic Versioning][].
 
 ### Added
 
-* option for add extra labels for all exported metrics
+* option `extra_labels` for add extra labels for all exported metrics
+* option `disable_go_collector` for disable Go runtime metrics
+* option `disable_process_collector` for disable process state metrics
+* metrics documentation file `METRICS.md`
 
 ## [0.1.0][] - 2025-12-15
 

@@ -119,6 +119,13 @@ exporter:
 
   # Prometheus extra settings
   prometheus:
+    # Disables collector that exports metrics about the current Go process and runtime (go_* prefixed metrics)
+    disable_go_collector: ${METRICZ_PROMETHEUS_DISABLE_GO_COLLECTOR:-false} # (false by default)
+
+    # Disables the collector that exports metrics about the current state of the process, including
+    # CPU, memory, and file descriptor usage, as well as the process startup time (process_* prefixed metrics)
+    disable_process_collector: ${METRICZ_PROMETHEUS_DISABLE_PROCESS_COLLECTOR:-false} # (false by default)
+
     # ConstantLabels are added to every metric exposed by this exporter.
     # WARNING: changing labels creates new time series.
     extra_labels: {}

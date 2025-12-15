@@ -25,6 +25,9 @@ and external integration features:
 * **Transaction Support:** Handles chunked uploads from the mod to minimize
   network overhead on the game server.
 
+A detailed description of additional metrics is described in the
+[METRICS.md](./METRICS.md) document.
+
 <!-- markdownlint-disable-next-line MD033 -->
 ## Install <br clear="right"/>
 
@@ -183,6 +186,13 @@ exporter:
 
   # Prometheus extra settings
   prometheus:
+    # Disables collector that exports metrics about the current Go process and runtime (go_* prefixed metrics)
+    disable_go_collector: ${METRICZ_PROMETHEUS_DISABLE_GO_COLLECTOR:-false} # (false by default)
+
+    # Disables the collector that exports metrics about the current state of the process, including
+    # CPU, memory, and file descriptor usage, as well as the process startup time (process_* prefixed metrics)
+    disable_process_collector: ${METRICZ_PROMETHEUS_DISABLE_PROCESS_COLLECTOR:-false} # (false by default)
+
     # ConstantLabels are added to every metric exposed by this exporter.
     # WARNING: changing labels creates new time series.
     extra_labels: {}
@@ -433,6 +443,24 @@ Example: scrape metricz-exporter, but preserve
 
 Replace `node-exporter` and `127.0.0.1:9100`
 with the exact instance value you had before.
+
+> [!CAUTION]  
+> This configuration may cause overlapping or mixed metrics
+> with those exposed by **node_exporter** or **windows_exporter**
+> (for example, Go runtime or process-level metrics).
+>
+> To avoid this, it is recommended to disable these collectors
+> in the application itself by setting:
+>
+> * `exporter.prometheus.disable_go_collector`: `true`
+> * `exporter.prometheus.disable_process_collector`: `true`
+>
+> This will result in some loss of low-level runtime metrics,
+> but it allows you to preserve the original time series
+> during migration without metric collisions.
+>
+> Whether to use `relabel_configs` depends on your setup
+> and your need for strict time series continuity.
 
 ## 👉 [Support Me](https://gist.github.com/WoozyMasta/7b0cabb538236b7307002c1fbc2d94ea)
 

@@ -64,8 +64,13 @@ func Execute() int {
 		reg = prometheus.WrapRegistererWith(prometheus.Labels(cfg.App.Prometheus.ExtraLabels), registry)
 	}
 
-	reg.MustRegister(collectors.NewGoCollector())
-	reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	// Enable built in collectors
+	if !cfg.App.Prometheus.DisableGoCollector {
+		reg.MustRegister(collectors.NewGoCollector())
+	}
+	if !cfg.App.Prometheus.DisableProcessCollector {
+		reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	}
 	reg.MustRegister(exporter)
 
 	// Initialize Router
