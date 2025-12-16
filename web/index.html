@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>MetricZ Server Monitor</title>
+  <link href="./style.css" rel="stylesheet" />
+</head>
+
+<body>
+  <div class="container">
+    <center>
+      <h1>Server Monitor</h1>
+    </center>
+    <div id="server-list" class="server-grid">
+      <div class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <script type="module">
+    /**
+     * Example usage of the library.
+     *
+     * Files you must provide:
+     * - ./metricz.js      -> exports { MetricZClient, TimeseriesChart }
+     * - ./style.css       -> UI styles (cards, grid, etc.)
+     *
+     * Backend endpoint used:
+     * - GET /api/v1/status            -> all instances
+     * - GET /api/v1/status/{id}       -> single instance
+     *
+     * Expected response shape per instance:
+     * {
+     *   values: { [metricName]: number },
+     *   labels: { [metricName]: { [labelKey]: string[] } }  // label values are arrays
+     * }
+     */
+
+    import {
+      MetricZClient,
+      TimeseriesChart
+    } from "./metricz.js";
+
+    const container = document.getElementById("server-list");
+
+    // Keep chart instances here to avoid re-creating canvases on every update.
+    const charts = Object.create(null);
+
+    // Inline SVG icons for "time of day" badge.
+    const TIME_ICONS = {
+      DAWN: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18C8 15.7909 9.79086 14 12 14C14.2091 14 16 15.7909 16 18"/><line x1="21" y1="21" x2="3" y2="21"/><line x1="12" y1="11" x2="12" y2="9"/><path d="M12 3L12 11"/><path d="M12 3L9 5.5"/><path d="M12 3L15 5.5"/><line x1="5" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="19" y2="18"/><line x1="19.071" y1="11.3432" x2="17.6568" y2="12.7574"/><line x1="5.41421" y1="12" x2="6.82843" y2="13.4142"/></svg>`,
+      DAY: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="8" height="8" rx="4"/><line x1="12" y1="5" x2="12" y2="3"/><line x1="5" y1="12" x2="3" y2="12"/><line x1="7.75739" y1="16.6569" x2="6.34317" y2="18.0711"/><line x1="16.728" y1="17.3137" x2="18.1422" y2="18.7279"/><line x1="12" y1="21" x2="12" y2="19"/><line x1="21" y1="12" x2="19" y2="12"/><line x1="19.071" y1="5.34317" x2="17.6568" y2="6.75738"/><line x1="5.41421" y1="6" x2="6.82843" y2="7.41421"/></svg>`,
+      DUSK: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18C8 15.7909 9.79086 14 12 14C14.2091 14 16 15.7909 16 18"/><line x1="21" y1="21" x2="3" y2="21"/><line x1="12" y1="11" x2="12" y2="9"/><path d="M12 11L12 3"/><path d="M12 11L15 8.5"/><path d="M12 11L9 8.5"/><line x1="5" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="19" y2="18"/><line x1="19.071" y1="11.3432" x2="17.6568" y2="12.7574"/><line x1="5.41421" y1="12" x2="6.82843" y2="13.4142"/></svg>`,
+      NIGHT: `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5C8.13401 5 5 8.13401 5 12C5 15.866 8.13401 19 12 19C15.171 19 18.1395 17.1814 19 14.2899"/><path d="M19 14C18.8319 14 18.6652 13.9941 18.5 13.9824C12.5 15 9.50001 11.5 12 5"/></svg>`
+    };
+
+    const timeConfig = {
+      0: {
+        label: "Dawn",
+        class: "t-dawn",
+        icon: TIME_ICONS.DAWN
+      },
+      1: {
+        label: "Day",
+        class: "t-day",
+        icon: TIME_ICONS.DAY
+      },
+      2: {
+        label: "Dusk",
+        class: "t-dusk",
+        icon: TIME_ICONS.DUSK
+      },
+      3: {
+        label: "Night",
+        class: "t-night",
+        icon: TIME_ICONS.NIGHT
+      }
+    };
+
+    function timeBadgeHtml(value) {
+      const cfg = timeConfig[value] || timeConfig[1];
+      return `<div class="time-badge ${cfg.class}">${cfg.icon}<span>${cfg.label}</span></div>`;
+    }
+
+    /**
+     * Labels are now arrays of values. This helper gets the first value.
+     * @param {any} data
+     * @param {string} metric
+     * @param {string} key
+     * @param {string=} fallback
+     */
+    function labelFirst(data, metric, key, fallback = "") {
+      return MetricZClient.getLabelFirst(data, metric, key) ?? fallback;
+    }
+
+    function createCardHtml(id, data) {
+      // Read label values (arrays) via helper.
+      const serverName = labelFirst(data, "metricz_a2s_info", "server_name", `Instance #${id}`);
+      const world = labelFirst(data, "dayz_metricz_status", "world", "") || labelFirst(data, "metricz_a2s_info",
+        "world", "Unknown");
+      const gameAddress = labelFirst(data, "metricz_a2s_info", "game_address", "N/A");
+
+      // Values are sums if exporter has multiple series.
+      const vals = data?.values || {};
+      const timeVal = Number.isFinite(vals.dayz_metricz_time_of_day) ? vals.dayz_metricz_time_of_day : 1;
+
+      return `
+        <div class="server-card" id="srv-${id}" data-id="${id}">
+          <div class="server-header">
+            <div class="server-name">${serverName}</div>
+            <span class="status-badge online">ONLINE</span>
+          </div>
+
+          <div class="metrics-list">
+            <div class="metric-row">
+              <span class="label">Map</span>
+              <span class="value">${world}</span>
+            </div>
+
+            <div class="metric-row">
+              <span class="label">Address</span>
+              <span class="value">${gameAddress}</span>
+            </div>
+
+            <div class="metric-row">
+              <span class="label">Time of Day</span>
+              <div class="js-time-container">${timeBadgeHtml(timeVal)}</div>
+            </div>
+
+            <div class="metric-row" style="margin-top: 10px;">
+              <span class="label">Players</span>
+              <span class="value js-players-text">-- / --</span>
+            </div>
+            <div class="player-bar-bg">
+              <div class="player-bar-fill js-players-bar" style="width: 0%"></div>
+            </div>
+
+            <div class="chart-container">
+              <div class="chart-header">
+                <span>FPS History</span>
+                <span class="js-fps-val" style="color: var(--accent); font-weight:bold;">0</span>
+              </div>
+              <canvas class="ts-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateCardData(el, id, data) {
+      const vals = data?.values || {};
+
+      // Time of day badge
+      const timeVal = Number.isFinite(vals.dayz_metricz_time_of_day) ? vals.dayz_metricz_time_of_day : 1;
+      const timeContainer = el.querySelector(".js-time-container");
+      if (timeContainer) timeContainer.innerHTML = timeBadgeHtml(timeVal);
+
+      // Players
+      const players = vals.metricz_a2s_info_players_online || 0;
+      const slots = vals.metricz_a2s_info_players_slots || 60;
+      const queue = vals.metricz_a2s_info_players_queue || 0;
+      const fillPercent = slots > 0 ? Math.min((players / slots) * 100, 100) : 0;
+
+      el.querySelector(".js-players-text").innerHTML = `${players} / ${slots} <small>(${queue} queue)</small>`;
+      el.querySelector(".js-players-bar").style.width = `${fillPercent}%`;
+
+      // FPS
+      const fps = vals.dayz_metricz_fps_window_avg || 0;
+      const fpsValEl = el.querySelector(".js-fps-val");
+      fpsValEl.textContent = Number(fps).toFixed(1);
+
+      // Chart (lazy init per server)
+      if (!charts[id]) {
+        const canvas = el.querySelector(".ts-canvas");
+        charts[id] = new TimeseriesChart(canvas, {
+          maxPoints: 50,
+          thresholds: {
+            medium: 40,
+            low: 20
+          }
+        });
+      }
+      charts[id].push(fps);
+
+      // Match text color to thresholds (same as chart rules)
+      if (fps < 20) fpsValEl.style.color = "#d9534f";
+      else if (fps < 40) fpsValEl.style.color = "#f0ad4e";
+      else fpsValEl.style.color = "#5cb85c";
+    }
+
+    // Create the polling client.
+    // If serverIds is empty -> fetches all instances.
+    const monitor = new MetricZClient({
+      baseUrl: "/api/v1/status",
+      // serverIds: ["srv1", "srv2"],
+
+      onUpdate: (allData) => {
+        if (container.querySelector(".loading")) container.innerHTML = "";
+
+        const ids = Object.keys(allData);
+
+        // Remove cards for instances that disappeared (and free chart objects).
+        for (const child of Array.from(container.children)) {
+          const id = child.dataset.id;
+          if (id && !ids.includes(id)) {
+            delete charts[id];
+            child.remove();
+          }
+        }
+
+        // Create/update cards.
+        for (const id of ids) {
+          let card = document.getElementById(`srv-${id}`);
+          if (!card) {
+            container.insertAdjacentHTML("beforeend", createCardHtml(id, allData[id]));
+            card = document.getElementById(`srv-${id}`);
+          }
+          updateCardData(card, id, allData[id]);
+        }
+      },
+
+      onError: (err) => console.warn(err)
+    });
+
+    monitor.start();
+  </script>
+</body>
+
+</html>

@@ -21,7 +21,7 @@ and external integration features:
   and real-world GeoIP location.
 * **Public Status API:** Offers a lightweight, cacheable JSON endpoint
   (`/status`), perfect for displaying live server stats on your website
-  without exposing your monitoring stack.
+  without exposing your monitoring stack. [More info](web/web-status.md).
 * **Transaction Support:** Handles chunked uploads from the mod to minimize
   network overhead on the game server.
 

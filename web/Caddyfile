@@ -1,0 +1,10 @@
+:8080 {
+    # serve static files
+    root * .
+    file_server
+
+    # proxy to your MetricZ Exporter instance
+    reverse_proxy /api/* {$METRICZ_UPSTREAM:127.0.0.1:8098} {
+        header_up Host {upstream_hostport}
+    }
+}

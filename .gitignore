@@ -131,3 +131,4 @@ config.yaml
 dev-config.yaml
 *ent.sh
 /metricz
+.env
