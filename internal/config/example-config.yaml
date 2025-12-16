@@ -132,6 +132,29 @@ exporter:
       # exporter: metricz
       # datacenter: eu-2
 
+  # Rules for converting raw game world coordinates
+  # (X/Z in values or labels) into geographic coordinates (longitude/latitude)
+  # on the exporter side to reduce load on the game server
+  geo_transform:
+    # Toggles geo coordinate transformation on the exporter side
+    enabled: ${METRICZ_GEO_TRANSFORM_ENABLED:-false} # (false by default)
+
+    # Metric name that provides effective world size used as the base for coordinate normalization.
+    world_size_metric: dayz_metricz_effective_world_size
+
+    # Lists metric names where the X/Y world coordinate is stored in the metric VALUE (Gauge).
+    # X is converted to longitude
+    # Z is converted to latitude
+    metrics_value_x: [dayz_metricz_player_position_x, dayz_metricz_transport_position_x]
+    metrics_value_z: [dayz_metricz_player_position_z, dayz_metricz_transport_position_z]
+
+    # Lists metric names where coordinates are stored in LABELS instead of values.
+    metrics_label_targets: [dayz_metricz_player_position_z, dayz_metricz_transport_position_z]
+
+    # Label key that contains raw X/Y coordinates
+    metrics_label_x_name: longitude
+    metrics_label_z_name: latitude
+
   log:
     # Logging level: trace, debug, info, warn, error, fatal
     level: ${METRICZ_LOG_LEVEL:-info} # (info by default)

@@ -71,7 +71,7 @@ func (h *Handler) handleCommit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metrics, err := parser.ParseAndValidate(reader, instanceID, h.cfg.App.Ingest.OverwriteInstanceID)
+	metrics, err := parser.ParseAndValidate(reader, instanceID, h.cfg.App)
 	if err != nil {
 		logger.Warn().
 			Err(err).

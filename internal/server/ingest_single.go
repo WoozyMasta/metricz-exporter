@@ -29,7 +29,7 @@ func (h *Handler) handleSingleShot(w http.ResponseWriter, r *http.Request) {
 	counter := &countingReader{r: limitedReader}
 	defer func() { _ = r.Body.Close() }()
 
-	metrics, err := parser.ParseAndValidate(counter, instanceID, h.cfg.App.Ingest.OverwriteInstanceID)
+	metrics, err := parser.ParseAndValidate(counter, instanceID, h.cfg.App)
 	readBytes := int(counter.count)
 
 	if err != nil {

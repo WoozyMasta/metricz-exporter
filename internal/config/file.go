@@ -48,6 +48,10 @@ type AppConfig struct {
 
 	// Stale config defines when a server/metrics are considered stale/down.
 	Stale StaleConfig `json:"stale"`
+
+	// GeoTransform configures server-side transformation of game world coordinates
+	// into EPSG:4326 (WGS84) longitude/latitude.
+	GeoTransform GeoTransformConfig `json:"geo_transform"`
 }
 
 // AuthConfig controls Basic Auth for private endpoints.
@@ -135,6 +139,37 @@ type PublicExportConfig struct {
 
 	// LabelsExclude is a denylist of label keys removed from exported labels.
 	LabelsExclude []string `json:"labels_exclude" default:"[\"steam_id\", \"guid\", \"buid\", \"name\", \"ip\", \"city\", \"country\"]"`
+}
+
+// GeoTransformConfig defines rules for converting raw game world coordinates.
+type GeoTransformConfig struct {
+	// Enabled toggles geo coordinate transformation on the exporter side.
+	Enabled bool `json:"enabled"`
+
+	// WorldSizeMetric is the metric name that provides effective world size.
+	WorldSizeMetric string `json:"world_size_metric" default:"dayz_metricz_effective_world_size"`
+
+	// MetricsValueX lists metric names where the X world coordinate
+	// is stored in the metric VALUE (Gauge).
+	// X is converted to longitude.
+	MetricsValueX []string `json:"metrics_value_x" default:"[\"dayz_metricz_player_position_x\", \"dayz_metricz_transport_position_x\"]"`
+
+	// MetricsValueZ lists metric names where the Z world coordinate
+	// is stored in the metric VALUE (Gauge).
+	// Z is converted to latitude.
+	MetricsValueZ []string `json:"metrics_value_z" default:"[\"dayz_metricz_player_position_z\", \"dayz_metricz_transport_position_z\"]"`
+
+	// MetricsLabelTargets lists metric names where coordinates
+	// are stored in LABELS instead of values.
+	MetricsLabelTargets []string `json:"metrics_label_targets" default:"[\"dayz_metricz_effect_area_insiders\", \"dayz_metricz_territory_lifetime\"]"`
+
+	// MetricsLabelNameX is the label key that contains raw X coordinate.
+	// The value is converted to longitude.
+	MetricsLabelNameX string `json:"metrics_label_x_name" default:"longitude"`
+
+	// MetricsLabelNameZ is the label key that contains raw Z coordinate.
+	// The value is converted to latitude.
+	MetricsLabelNameZ string `json:"metrics_label_z_name" default:"latitude"`
 }
 
 // ServerDefinition describes one logical instance (instance_id) and its data sources.

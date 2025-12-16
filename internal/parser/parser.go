@@ -11,11 +11,14 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/woozymasta/dzid"
+	"github.com/woozymasta/metricz-exporter/internal/config"
 )
+
+const maxLat = 85.05112878
 
 // ParseAndValidate parses Prometheus text format, injects/validates the instance_id,
 // and deduplicates metrics using "Last Write Wins" strategy.
-func ParseAndValidate(input io.Reader, targetInstanceID string, overwrite bool) (map[string]*dto.MetricFamily, error) {
+func ParseAndValidate(input io.Reader, targetInstanceID string, cfg config.AppConfig) (map[string]*dto.MetricFamily, error) {
 	decoder := expfmt.NewDecoder(input, expfmt.NewFormat(expfmt.TypeTextPlain))
 	families := make(map[string]*dto.MetricFamily)
 
@@ -71,7 +74,7 @@ func ParseAndValidate(input io.Reader, targetInstanceID string, overwrite bool) 
 				if labelPair.GetName() == "instance_id" {
 					currentVal := labelPair.GetValue()
 					if currentVal != targetInstanceID {
-						if overwrite {
+						if cfg.Ingest.OverwriteInstanceID {
 							val := targetInstanceID
 							labelPair.Value = &val
 						} else {
@@ -120,6 +123,11 @@ func ParseAndValidate(input io.Reader, targetInstanceID string, overwrite bool) 
 		}
 
 		families[mf.GetName()] = mf
+	}
+
+	// Apply transformation of game position to EPSG:4326 (WGS84) format
+	if cfg.GeoTransform.Enabled && cfg.GeoTransform.WorldSizeMetric != "" {
+		applyGeoTransform(families, cfg.GeoTransform)
 	}
 
 	return families, nil
