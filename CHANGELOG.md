@@ -13,6 +13,21 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.1.2][] - 2025-12-21
+
+### Added
+
+* new configuration option `max_staging_size` to prevent memory
+  exhaustion during chunked ingestion, incomplete transactions now limited
+  by total memory usage (default 64MiB).
+
+### Changed
+
+* fixed RCon poller incorrectly overwriting metrics series instead of
+  appending them.
+
+[0.1.2]: https://github.com/WoozyMasta/metricz-exporter/compare/v0.1.1...v0.1.2
+
 ## [0.1.1][] - 2025-12-16
 
 ### Added
