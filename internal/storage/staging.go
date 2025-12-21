@@ -74,7 +74,7 @@ func (s *Storage) AppendToStaging(txnHash string, instanceID string, seqID int, 
 	}
 
 	// Calculate Delta
-	var delta int64 = payloadSize
+	delta := payloadSize
 	if oldChunk, ok := item.Chunks[seqID]; ok {
 		delta -= int64(len(oldChunk))
 	}
