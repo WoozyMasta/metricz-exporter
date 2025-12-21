@@ -10,10 +10,12 @@ import (
 
 // Storage holds live and staging metrics state.
 type Storage struct {
-	liveStore    map[string]*InstanceState
-	stagingStore map[string]*StagingItem
-	liveMu       sync.RWMutex
-	stagingMu    sync.Mutex
+	liveStore      map[string]*InstanceState
+	stagingStore   map[string]*StagingItem
+	stagingSize    int64
+	maxStagingSize int64
+	liveMu         sync.RWMutex
+	stagingMu      sync.Mutex
 }
 
 // InstanceState holds the metrics and metadata for a specific game server instance.
@@ -37,10 +39,11 @@ type IngestStats struct {
 }
 
 // New creates a new Storage.
-func New() *Storage {
+func New(maxStagingSize int64) *Storage {
 	return &Storage{
-		liveStore:    make(map[string]*InstanceState),
-		stagingStore: make(map[string]*StagingItem),
+		liveStore:      make(map[string]*InstanceState),
+		stagingStore:   make(map[string]*StagingItem),
+		maxStagingSize: maxStagingSize,
 	}
 }
 

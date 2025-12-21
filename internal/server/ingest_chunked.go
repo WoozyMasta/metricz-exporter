@@ -22,7 +22,7 @@ func (h *Handler) handleChunkIngest(w http.ResponseWriter, r *http.Request) {
 			Err(err).
 			Str("sequence_id", seqIDStr).
 			Msg("failed to read sequence id")
-		http.Error(w, "Invalid seq_id", http.StatusBadRequest)
+		http.Error(w, "invalid seq_id", http.StatusBadRequest)
 
 		return
 	}
@@ -34,14 +34,24 @@ func (h *Handler) handleChunkIngest(w http.ResponseWriter, r *http.Request) {
 			Err(err).
 			Str("instance_id", instanceID).
 			Msg("failed to read chunk body")
-		http.Error(w, "Failed to read body", http.StatusInternalServerError)
+		http.Error(w, "failed to read body", http.StatusInternalServerError)
 
 		return
 	}
 	defer func() { _ = r.Body.Close() }()
 
-	// Pass config TTL and InstanceID for dynamic calculation
-	h.store.AppendToStaging(txnHash, instanceID, seqID, body, h.cfg.App.Ingest.TransactionTTL.ToDuration())
+	err = h.store.AppendToStaging(txnHash, instanceID, seqID, body, h.cfg.App.Ingest.TransactionTTL.ToDuration())
+	if err != nil {
+		logger.Warn().
+			Err(err).
+			Str("txn", txnHash).
+			Str("instance_id", instanceID).
+			Int("seq_id", seqID).
+			Msg("staging rejected chunk")
+		http.Error(w, "staging buffer full", http.StatusServiceUnavailable)
+
+		return
+	}
 
 	logger.Trace().
 		Str("txn", txnHash).

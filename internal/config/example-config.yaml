@@ -85,6 +85,9 @@ exporter:
     # - chunked ingest: EACH chunk request body
     max_body_size: ${METRICZ_INGEST_MAX_BODY_SIZE:-4194304} # (4194304 by default)
 
+    # Maximum allowed memory usage (in bytes) for incomplete transactions
+    max_staging_size: ${METRICZ_INGEST_MAX_STAGING_SIZE:-67108864} # (4194304 by default)
+
     # If true, allow payload to override/replace instance_id label when it differs from URL
     # Enabling this allows cross-instance contamination unless you enforce external ACL
     overwrite_instance_id: ${METRICZ_INGEST_OVERWRITE_INSTANCE_ID:-false} # (false by default)

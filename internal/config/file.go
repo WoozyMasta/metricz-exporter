@@ -84,6 +84,9 @@ type IngestConfig struct {
 	// MaxBodySize is max HTTP request body in bytes (hard limit).
 	MaxBodySize int64 `json:"max_body_size" default:"4194304"` // 4 MiB
 
+	// MaxStagingSize is the maximum allowed memory usage (in bytes) for incomplete transactions.
+	MaxStagingSize int64 `json:"max_staging_size" default:"67108864"` // 64 MiB
+
 	// OverwriteInstanceID allows ingest payload to override instance_id label even
 	// if it differs from instance_id in URL.
 	OverwriteInstanceID bool `json:"overwrite_instance_id"`

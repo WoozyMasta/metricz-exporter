@@ -42,7 +42,7 @@ func Execute() int {
 		Msg("configuration loaded")
 
 	// Initialize dependencies
-	store := storage.New()
+	store := storage.New(cfg.App.Ingest.MaxStagingSize)
 	exporter := storage.NewExporter(store, cfg.App.Stale)
 	apiHandler := server.NewHandler(store, cfg)
 	pollerMgr := poller.NewManager(store, cfg)

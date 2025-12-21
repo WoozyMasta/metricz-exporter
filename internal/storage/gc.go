@@ -56,6 +56,7 @@ func (s *Storage) cleanupStaging() int {
 			}
 
 			state.IngestStats.ExpiredTransactions++
+			s.stagingSize -= item.ByteSize
 			delete(s.stagingStore, key)
 			removedCount++
 

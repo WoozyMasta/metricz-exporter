@@ -12,13 +12,14 @@ type StagingItem struct {
 	ExpiresAt  time.Time
 	Chunks     map[int][]byte
 	InstanceID string
+	ByteSize   int64
 }
 
 // AppendToStaging appends data.
 // It calculates TTL based on defaultTTL OR the instance's known scrape interval (whichever is larger).
 // If the transaction is new, it initializes it.
 // If the transaction exists but expired, it resets it (starts over).
-func (s *Storage) AppendToStaging(txnHash string, instanceID string, seqID int, data []byte, defaultTTL time.Duration) {
+func (s *Storage) AppendToStaging(txnHash string, instanceID string, seqID int, data []byte, defaultTTL time.Duration) error {
 	s.stagingMu.Lock()
 	defer s.stagingMu.Unlock()
 
@@ -27,14 +28,22 @@ func (s *Storage) AppendToStaging(txnHash string, instanceID string, seqID int, 
 
 	// Logic: If item exists but expired -> Treat as new (Reset)
 	if exists && now.After(item.ExpiresAt) {
+		s.stagingSize -= item.ByteSize // reset quota
 		delete(s.stagingStore, txnHash)
 		exists = false
 	}
 
+	payloadSize := int64(len(data))
+
 	if !exists {
+		if s.stagingSize+payloadSize > s.maxStagingSize {
+			return ErrStagingFull
+		}
+
 		// Delete stale ingest data
 		for key, val := range s.stagingStore {
 			if val.InstanceID == instanceID {
+				s.stagingSize -= val.ByteSize
 				delete(s.stagingStore, key)
 			}
 		}
@@ -59,11 +68,27 @@ func (s *Storage) AppendToStaging(txnHash string, instanceID string, seqID int, 
 			Chunks:     make(map[int][]byte),
 			ExpiresAt:  now.Add(ttl),
 			InstanceID: instanceID,
+			ByteSize:   0,
 		}
 		s.stagingStore[txnHash] = item
 	}
 
+	// Calculate Delta
+	var delta int64 = payloadSize
+	if oldChunk, ok := item.Chunks[seqID]; ok {
+		delta -= int64(len(oldChunk))
+	}
+
+	// Final Capacity Check
+	if s.stagingSize+delta > s.maxStagingSize {
+		return ErrStagingFull
+	}
+
 	item.Chunks[seqID] = data
+	item.ByteSize += delta
+	s.stagingSize += delta
+
+	return nil
 }
 
 // RetrieveStaging returns buffer and chunk count.
@@ -72,14 +97,14 @@ func (s *Storage) RetrieveStaging(txnHash string) (io.Reader, int, int, bool) {
 	defer s.stagingMu.Unlock()
 
 	item, exists := s.stagingStore[txnHash]
-	if !exists || time.Now().After(item.ExpiresAt) {
-		delete(s.stagingStore, txnHash)
+	if !exists {
 		return nil, 0, 0, false
 	}
 
+	s.stagingSize -= item.ByteSize
 	delete(s.stagingStore, txnHash)
 
-	if len(item.Chunks) == 0 {
+	if time.Now().After(item.ExpiresAt) || len(item.Chunks) == 0 {
 		return nil, 0, 0, false
 	}
 
