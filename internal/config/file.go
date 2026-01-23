@@ -189,6 +189,9 @@ type RConConfig struct {
 
 	// BufferSize is read buffer for RCon packets.
 	BufferSize uint16 `json:"buffer_size" default:"1024"`
+
+	// LoginAttempts Number of login attempts.
+	LoginAttempts int `json:"login_attempts" default:"1"`
 }
 
 // LoadConfig reads config from path (YAML/JSON), applies defaults, validates, and configures logger.

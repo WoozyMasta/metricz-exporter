@@ -262,6 +262,9 @@ servers:
       # Buffer size for RCon packets
       buffer_size: 1024 # (by default)
 
+      # Number of login attempts if timeout reached
+      login_attempts: 1 # (by default)
+
   - instance_id: "${METRICZ_SERVER_2_INSTANCE_ID:-2}"
     a2s:
       address: ${METRICZ_SERVER_2_A2S_ADDRESS:-127.0.0.1:27017}

@@ -114,6 +114,7 @@ func (s *RConSession) connect() error {
 	conn.SetKeepalive(s.cfg.RCon.KeepaliveTimeout.ToDuration())
 	conn.SetDeadline(s.cfg.RCon.DeadlineTimeout.ToDuration())
 	conn.SetBufferSize(s.cfg.RCon.BufferSize)
+	conn.SetLoginAttempts(s.cfg.RCon.LoginAttempts)
 
 	conn.StartKeepAlive()
 	s.conn = conn
