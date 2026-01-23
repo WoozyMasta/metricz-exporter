@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.1.3][] - 2026-01-24
+
+### Added
+
+* RCon config option `login_attempts`
+
+### Changed
+
+* exclude invalid RCon players from metrics and fix metric duplication
+* fix potentially broken RCon player label values
+
+[0.1.3]: https://github.com/WoozyMasta/metricz-exporter/compare/v0.1.2...v0.1.3
+
 ## [0.1.2][] - 2025-12-21
 
 ### Added
