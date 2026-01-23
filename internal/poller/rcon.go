@@ -155,9 +155,13 @@ func (s *RConSession) generateMetrics(players *beparser.Players) map[string]*dto
 
 	if players != nil {
 		up = 1
-		total = float64(len(*players))
 
 		for _, p := range *players {
+			if !p.Valid {
+				continue
+			}
+
+			total++
 			var joined float64
 			if p.Lobby {
 				inLobby++
